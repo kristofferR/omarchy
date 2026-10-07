@@ -1802,10 +1802,10 @@ ShellRoot {
           id: id,
           name: plugins[id].name,
           kinds: kinds,
-          // What `omarchy plugin enable/disable` toggles: for a widget that is
-          // its place in the bar, not whether its component is loadable.
+          // Widgets are explicitly activated by a direct bar placement or a
+          // plugins[] entry for a host such as a drawer, not loadability alone.
           enabled: isBarOption ? active
-            : (isBarWidget ? shell.pluginRegistry.inBar(id) : shell.pluginRegistry.isEnabled(id)),
+            : (isBarWidget ? shell.pluginRegistry.isWidgetEnabled(id) : shell.pluginRegistry.isEnabled(id)),
           active: active,
           // A bar has no off, only a successor: you leave one by enabling
           // another, so there is nothing for disable to do to it. Said here so
