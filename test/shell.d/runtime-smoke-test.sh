@@ -748,3 +748,33 @@ jq -e '.currentAllowed == false and .retainedAllowed == false' \
   fail_with_log "cached plugin facades revoke capabilities removed from the manifest"
 }
 pass "manifest reload revokes cached facade capabilities"
+
+# Drawer hosts activate children through plugins[] rather than direct slots.
+# Exercise the public status command after the layout/handler lifecycle checks.
+status_config="$test_home/.config/omarchy/shell.json"
+shell_ipc shell listShellConfig | jq '
+  .bar.layout |= with_entries(.value |= map(select((.id // .) != "omarchy.clock"))) |
+  .plugins |= map(select(.id != "omarchy.clock")) + [{id: "omarchy.clock"}]
+' >"$status_config.tmp"
+mv "$status_config.tmp" "$status_config"
+shell_ipc_quiet shell reloadConfig >/dev/null
+for _ in {1..50}; do
+  shell_config=$(shell_ipc shell listShellConfig)
+  jq -e '
+    any(.plugins[]; .id == "omarchy.clock") and
+    all(.bar.layout[][]; (.id // .) != "omarchy.clock")
+  ' <<<"$shell_config" >/dev/null && break
+  sleep 0.1
+done
+jq -e '
+  any(.plugins[]; .id == "omarchy.clock") and
+  all(.bar.layout[][]; (.id // .) != "omarchy.clock")
+' <<<"$shell_config" >/dev/null || fail_with_log "hosted widget configuration loads"
+plugins=$(shell_ipc shell listPlugins)
+jq -e 'any(.[]; .id == "omarchy.clock" and .enabled)' <<<"$plugins" >/dev/null ||
+  fail_with_log "shell IPC reports a registered drawer child as enabled"
+shell_ipc_quiet shell setPluginEnabled omarchy.clock false >/dev/null
+plugins=$(shell_ipc shell listPlugins)
+jq -e 'any(.[]; .id == "omarchy.clock" and (.enabled | not))' <<<"$plugins" >/dev/null ||
+  fail_with_log "shell IPC keeps an unplaced built-in widget disabled"
+pass "shell IPC distinguishes registered drawer children from unplaced widgets"
