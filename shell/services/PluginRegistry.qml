@@ -191,13 +191,6 @@ QtObject {
     return findEntryLocation(config, id).kind === "bar"
   }
 
-  // Hosts such as drawers activate their children through plugins[]. Built-in
-  // widgets remain loadable without either entry, so isEnabled alone is not enough.
-  function isWidgetEnabled(id) {
-    var config = shellConfigProvider ? shellConfigProvider() : null
-    return findEntryLocation(config, id).found && isEnabled(id)
-  }
-
   function defaultBarWidgetSection(manifest) {
     var metadata = manifest && Util.isPlainObject(manifest.barWidget) ? manifest.barWidget : null
     var section = metadata ? String(metadata.defaultSection || "") : ""
