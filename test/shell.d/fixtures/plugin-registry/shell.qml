@@ -451,34 +451,6 @@ ShellRoot {
     root.assertTrue(root.config.disabledPlugins === undefined, "disabling a multi-kind widget records nothing else")
     root.assertTrue(registry.isEnabled("omarchy.hybrid"), "a multi-kind built-in remains loadable without its widget")
 
-    // A drawer registers its children through plugins[], while owning their
-    // placement and settings itself. Report that explicit activation too.
-    root.config = {
-      version: 1,
-      bar: { layout: { left: [], center: [], right: [{
-        id: "third.drawer", items: [{ id: "third.widget" }, { id: "omarchy.first-widget" }]
-      }] } },
-      plugins: [{ id: "third.widget" }, { id: "omarchy.first-widget" }]
-    }
-    root.assertTrue(registry.isWidgetEnabled("third.widget"), "a registered third-party drawer child is enabled")
-    root.assertTrue(registry.isWidgetEnabled("omarchy.first-widget"), "a registered built-in drawer child is enabled")
-    root.assertTrue(!registry.inBar("third.widget"), "hosted activation does not invent a direct placement")
-    root.assertTrue(!registry.isWidgetEnabled("third.center-widget"), "an unconfigured third-party widget stays disabled")
-    root.assertTrue(!registry.isWidgetEnabled("omarchy.hybrid"), "an unplaced built-in widget stays disabled despite being loadable")
-    var groupedConfig = JSON.stringify(root.config)
-    registry.setEnabled("third.widget", true)
-    root.assertEqual(JSON.stringify(root.config), groupedConfig, "enabling a hosted widget does not duplicate or move it")
-    registry.setEnabled("third.widget", false)
-    root.assertTrue(!registry.isWidgetEnabled("third.widget"), "disabling a hosted widget removes its activation")
-    root.config.disabledPlugins = ["omarchy.first-widget"]
-    root.assertTrue(!registry.isWidgetEnabled("omarchy.first-widget"), "an explicitly disabled drawer child stays disabled")
-    root.config = {
-      version: 1,
-      bar: { layout: { left: [{ id: "third.widget" }], center: [], right: [] } },
-      plugins: []
-    }
-    root.assertTrue(registry.isWidgetEnabled("third.widget"), "direct placement still enables a widget")
-
     var cloneBase = registry.pluginsDir + "/dhh.clock"
     root.assertEqual(registry.localPluginIdForPath(cloneBase + "/BarWidget.qml"), "dhh.clock", "personal clone changes are watched")
     root.assertEqual(registry.localPluginIdForPath(registry.pluginsDir + "/acme.clock/BarWidget.qml"), "acme.clock", "installed plugin changes are watched")

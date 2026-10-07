@@ -1796,22 +1796,27 @@ ShellRoot {
         var isBarOption = Array.isArray(kinds) && kinds.indexOf("bar") !== -1
         var isBarWidget = Array.isArray(kinds) && kinds.indexOf("bar-widget") !== -1
         var active = isBarOption && shell.isActiveBarOption(id)
+        var directlyPlaced = isBarWidget && shell.pluginRegistry.inBar(id)
+        var hasHostedWidget = isBarWidget && !directlyPlaced && shell.bar && typeof shell.bar.moduleWidgets === "function"
+          && shell.bar.moduleWidgets(id).length > 0
         var metadata = plugins[id].omarchy
         var clonedFrom = Util.isPlainObject(metadata) ? String(metadata.clonedFrom || "") : ""
         out.push({
           id: id,
           name: plugins[id].name,
           kinds: kinds,
-          // Widgets are explicitly activated by a direct bar placement or a
-          // plugins[] entry for a host such as a drawer, not loadability alone.
+          // Hosts such as drawers register live children without direct layout
+          // entries. Loading a widget's component or service alone is not enough.
           enabled: isBarOption ? active
-            : (isBarWidget ? shell.pluginRegistry.isWidgetEnabled(id) : shell.pluginRegistry.isEnabled(id)),
+            : (isBarWidget ? directlyPlaced || !!hasHostedWidget : shell.pluginRegistry.isEnabled(id)),
           active: active,
           // A bar has no off, only a successor: you leave one by enabling
           // another, so there is nothing for disable to do to it. Said here so
           // that a caller offering the verbs does not have to read kinds and
           // work it out again.
-          canDisable: !isBarOption,
+          // A hosted child's placement belongs to its host. The shell cannot
+          // restore that placement after a disable/re-enable cycle.
+          canDisable: !isBarOption && !hasHostedWidget,
           firstParty: !!plugins[id].__isFirstParty,
           clonedFrom: clonedFrom
         })
