@@ -2219,9 +2219,33 @@ Item {
     required property var entry
     readonly property string moduleName: root.entryId(entry)
     readonly property var settings: root.entrySettings(entry)
+    readonly property string execCommand: String(setting("exec", ""))
     property string outputText: ""
     property string outputTooltip: ""
     property bool outputActive: false
+    property int execGeneration: 0
+    property int launchedGeneration: -1
+    property bool rerunPending: false
+
+    // An edited exec keeps this module alive, so drop the old command's output and run the new one now.
+    onExecCommandChanged: {
+      execGeneration++
+      outputText = ""
+      outputTooltip = ""
+      outputActive = false
+      if (customProc.running) {
+        rerunPending = true
+        customProc.running = false
+      } else if (execCommand !== "") {
+        refreshTimer.restart()
+      }
+    }
+
+    function refresh() {
+      if (customProc.running) return
+      launchedGeneration = execGeneration
+      customProc.running = true
+    }
 
     function setting(name, fallback) {
       var value = settings ? settings[name] : undefined
@@ -2260,19 +2284,27 @@ Item {
 
     Process {
       id: customProc
-      command: ["bash", "-lc", String(customRoot.setting("exec", ""))]
+      command: ["bash", "-lc", customRoot.execCommand]
+      onExited: {
+        if (!customRoot.rerunPending) return
+        customRoot.rerunPending = false
+        if (customRoot.execCommand !== "") refreshTimer.restart()
+      }
       stdout: StdioCollector {
         waitForEnd: true
-        onStreamFinished: customRoot.update(text)
+        onStreamFinished: {
+          if (customRoot.launchedGeneration === customRoot.execGeneration) customRoot.update(text)
+        }
       }
     }
 
     Timer {
+      id: refreshTimer
       interval: Math.max(1, Number(customRoot.setting("interval", 5))) * 1000
-      running: String(customRoot.setting("exec", "")) !== ""
+      running: customRoot.execCommand !== ""
       repeat: true
       triggeredOnStart: true
-      onTriggered: root.runProcess(customProc)
+      onTriggered: customRoot.refresh()
     }
   }
 }
